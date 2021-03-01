@@ -46,7 +46,7 @@ void LOG()
         }
         h = h - h->prev;
     }
-//    printf("Entities in use:[%llu]\n", (sizeof(LIST) / sizeof(LIST[0]) - IN_USE));
+
 }
 
 void create(){
@@ -84,7 +84,7 @@ header_t* new_entity(size_t size)
 void* mem_alloc(size_t size)
 {
     assert(size <= HEAP_SIZE);
-    //необходимый размер памяти + размер заголовка
+
     size += HEADER;
     header_t* h = new_entity(size);
 
