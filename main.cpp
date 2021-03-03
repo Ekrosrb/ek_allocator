@@ -1,27 +1,15 @@
-
 #include <cstdio>
 #include <cstring>
 #include <cstdint>
 #include <cassert>
 
-
 #define u8 uint8_t
-#define STACK_SIZE 32
-#define HEAP_SIZE (STACK_SIZE * 8)
+#define HEAP_SIZE (4096)
 
-typedef struct virtual_memory
+typedef struct virtual_heap
 {
-    u8 stack[STACK_SIZE];
-    char** unmapped;
-    void* heap[HEAP_SIZE];
-
-    struct
-    {
-        char** data;
-        char** bss;
-        char* text;
-    }data_t;
-}virtual_memory_t;
+    u8 heap[HEAP_SIZE];
+}heap_t;
 
 typedef struct header
 {
@@ -30,44 +18,54 @@ typedef struct header
     size_t prev;
 }header_t;
 
-#define HEADER sizeof(header_t);
+#define HEADER sizeof(header_t)
 
-void* ptr;
+u8* ptr;
 
-void LOG()
+static bool init = false;
+
+void mem_show()
 {
-    auto* h = static_cast<header_t *>(ptr);
+    auto* h = reinterpret_cast<header_t *>(ptr);
     printf("OUR LIST\n");
     for (;;)
     {
-        printf("Data + HEADER. [%x]. Memory of heap [%u]. Status: [%s]\n", h, h->size, ((h->status == 0)?"free":"occupied"));
+        u8 status = h->status;
+        printf("Data + HEADER. [%x]. Memory of heap [%u]. Status: [%s]. ", h, h->size,(!status)?"free":"occupied");
+        if(!status && h->size-HEADER != 0) {
+            printf("Available for selection: [%u].\n", h->size-2*HEADER);
+        }else{
+            printf("\n");
+        }
         if(h->prev == 0){
             break;
         }
-        h = h - h->prev;
+        h = reinterpret_cast<header_t *>((u8 *) h - h->prev);
     }
 
 }
 
 void create(){
-    static virtual_memory_t vm;
+    static heap_t vm;
     ptr = vm.heap;
     header_t h;
     h.status = 0;
     h.size = HEAP_SIZE;
     h.prev = 0;
     *((header_t*)ptr) = h;
-    LOG();
-
+    init = true;
 }
 
 header_t* new_entity(size_t size)
 {
-    auto* best = static_cast<header_t *>(ptr);
+    if(!init){
+        create();
+    }
+    auto* best = reinterpret_cast<header_t *>(ptr);
     if(best->prev == 0){
         return best;
     }
-    header_t* prev = best - best->prev;
+    auto* prev = reinterpret_cast<header_t *>((u8 *) best - best->prev);
     for(;;){
         if(prev->status == 0 && prev->size >= size && prev->size < best->size){
             best = prev;
@@ -75,7 +73,7 @@ header_t* new_entity(size_t size)
         if(prev->prev == 0){
             break;
         }else{
-            prev = prev - prev->prev;
+            prev = reinterpret_cast<header_t *>((u8 *) prev - prev->prev);
         }
     }
     return best;
@@ -84,34 +82,41 @@ header_t* new_entity(size_t size)
 void* mem_alloc(size_t size)
 {
     assert(size <= HEAP_SIZE);
-
     size += HEADER;
-    header_t* h = new_entity(size);
 
-    void* user_ptr = h + HEADER;
+    header_t* h = new_entity(size);
+    assert(h->size >= size+sizeof(header_t));
+    void* user_ptr = (u8*)h + HEADER;
 
     size_t last = h->size - size;
-    size_t head = HEADER;
-    if(last <= head){
+    if(last <= HEADER){
         size = h->size;
-
+    }else if(last-HEADER <= HEADER){
+        size += last-HEADER;
+        last -= last-HEADER;
     }
-    header_t* next = h+size;
-    if(next->status != 1) {
-        next->prev = size;
-        next->status = 0;
-        next->size = last;
-        if (next != ptr && h != ptr) {
-            header_t *n = next + next->size;
-            n->prev = next->size;
+
+
+    if((u8*)h != ptr) {
+        if (size != h->size) {
+            header_t next;
+            next.prev = size;
+            next.status = 0;
+            next.size = last;
+            void *next_ptr = (u8*)h + h->size;
+            *((header_t *) next_ptr) = next;
         }
-        if (h == ptr) {
-            ptr = next;
-        }
+    }else{
+        header_t next;
+        next.prev = size;
+        next.status = 0;
+        next.size = last;
+        ptr += size;
+        *((header_t*)ptr) = next;
+
     }
     h->status = 1;
     h->size = size;
-    LOG();
     return user_ptr;
 
 }
@@ -119,66 +124,69 @@ void* mem_alloc(size_t size)
 
 void mem_free(void* pVoid)
 {
-    header_t * t = (header_t*)pVoid - HEADER
-    t->status = 0;
+    void* t = (u8*)pVoid - HEADER;
+    ((header_t*)t)->status = 0;
 
     header_t* next = nullptr;
     header_t* prev = nullptr;
-    if(t->prev != 0){
-        prev = t - t->prev;
+    if(((header_t*)t)->prev != 0){
+        prev = reinterpret_cast<header_t *>((u8 *) t - ((header_t *) t)->prev);
     }
     if(t != ptr){
-        next = t + t->size;
+        next = reinterpret_cast<header_t *>((u8 *) t + ((header_t *) t)->size);
     }
 
     if(next != nullptr && next->status == 0){
-        t->size += next->size;
-        if(next != ptr){
-            header_t* h = next + next->size;
-            h->prev += t->size;
+        ((header_t*)t)->size += next->size;
+        if((u8*)next != ptr){
+            auto* h = reinterpret_cast<header_t *>((u8 *) next + next->size);
+            h->prev += ((header_t*)t)->size;
         }else{
-            ptr = t;
-            next = t;
+            ptr = (u8*)t;
+            next = (header_t*)t;
         }
 
     }
 
     if(prev != nullptr && prev->status == 0){
-        prev->size += t->size;
+        prev->size += ((header_t*)t)->size;
         if(next != nullptr && next != t){
             next->prev = prev->size;
         }else{
-            ptr = prev;
+            ptr = (u8*)prev;
         }
     }
-
-
-    LOG();
 }
 
 void test()
 {
-    printf("Header size [%u]", sizeof(header_t));
-    create();
+
     struct foo{
         int a;
         int b;
     };
 
-    foo* f = static_cast<struct foo *>(mem_alloc(60));
+    foo* f = static_cast<struct foo *>(mem_alloc(3000));
     f->a = 10;
     f->b = 15;
     foo* f1 = static_cast<struct foo *>(mem_alloc(sizeof(f)));
     f1->a = 5;
     f1->b = 7;
+    mem_show();
     foo* f2 = static_cast<struct foo *>(mem_alloc(60));
     f2->a = 5;
     f2->b = 7;
+    mem_show();
     int* a = static_cast<int *>(mem_alloc(sizeof(int)));
+    mem_show();
     mem_free(f);
+    mem_show();
     mem_free(f1);
+    mem_show();
     mem_free(a);
+    mem_show();
     mem_free(f2);
+    mem_show();
 
 
 }
