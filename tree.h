@@ -37,8 +37,9 @@ public:
     Node* node;
     void add_node(void* ptr, size_t key);
     void delete_node(Node* n);
-    void* find(size_t key);
     void* find_and_delete(size_t key);
+    void* find(size_t key);
+    void delete_by_ptr(void* ptr, size_t size);
     ~Tree(){
         delete node;
     }

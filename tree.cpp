@@ -14,6 +14,10 @@ size_t Node::getKey() const {
 
 void Tree::add_node(void *ptr, size_t key) {
     Node *n = node;
+    if(n == nullptr){
+        node = new Node(n, nullptr, nullptr, ptr, key);
+        return;
+    }
     for (;;){
         if (n->getKey() > key) {
             if(n->left != nullptr){
@@ -67,6 +71,8 @@ void Tree::delete_node(Node *n) {
             }
         }else if(left != nullptr){
             node = left;
+        }else{
+            node = nullptr;
         }
     }else{
         if(parent->right == n){
@@ -77,6 +83,8 @@ void Tree::delete_node(Node *n) {
                 }
             }else if(right != nullptr){
                 parent->right = right;
+            }else{
+                parent->right = nullptr;
             }
         }else{
             if(right != nullptr){
@@ -86,6 +94,8 @@ void Tree::delete_node(Node *n) {
                 }
             }else if(left != nullptr){
                 parent->left = left;
+            }else{
+                parent->left = nullptr;
             }
         }
     }
@@ -129,19 +139,19 @@ void *Tree::find_and_delete(size_t key) {
     for(;;){
         size_t n_key = n->getKey();
         if(n_key < key && n->right != nullptr){
-            if(prev != nullptr){
-                n = prev;
-            }
             n = n->right;
         }else if(n_key > key && n->left != nullptr){
             prev = n;
             n = n->left;
         }else if(key == n_key){
             break;
-        }else if(prev != nullptr){
-            n = prev;
-        }else {
-            n = nullptr;
+        }else{
+            if(prev != nullptr) {
+                n = prev;
+            }else if(n_key < key){
+                n = nullptr;
+            }
+            break;
         }
 
     }
@@ -151,5 +161,28 @@ void *Tree::find_and_delete(size_t key) {
         return ptr;
     }else{
         return nullptr;
+    }
+}
+
+void Tree::delete_by_ptr(void* ptr, size_t key) {
+    Node* n = node;
+    if(n == nullptr){
+        return;
+    }
+    for(;;){
+        size_t n_key = n->getKey();
+        if(n_key < key && n->right != nullptr){
+            n = n->right;
+        }else if(n_key > key && n->left != nullptr){
+            n = n->left;
+        }else{
+            if(n->getData() == ptr){
+                delete_node(n);
+                break;
+            }else{
+                break;
+            }
+        }
+
     }
 }
