@@ -66,42 +66,54 @@ void Tree::delete_node(Node *n) {
     if(parent == nullptr){
         if(right != nullptr){
             node = right;
+            right->parent = nullptr;
             if(left != nullptr){
                 concat_node(left);
             }
+            delete n;
         }else if(left != nullptr){
             node = left;
+            left->parent = nullptr;
+            delete n;
         }else{
+            delete n;
             node = nullptr;
         }
     }else{
         if(parent->right == n){
             if(left != nullptr){
                 parent->right = left;
+                left->parent = parent;
                 if(right != nullptr){
                     concat_node(right);
                 }
+                delete n;
             }else if(right != nullptr){
                 parent->right = right;
+                right->parent = parent;
+                delete n;
             }else{
+                delete n;
                 parent->right = nullptr;
             }
         }else{
             if(right != nullptr){
                 parent->left = right;
+                right->parent = parent;
                 if(left != nullptr){
                     concat_node(left);
                 }
+                delete n;
             }else if(left != nullptr){
                 parent->left = left;
+                left->parent = parent;
+                delete n;
             }else{
+                delete n;
                 parent->left = nullptr;
             }
         }
     }
-
-    delete n;
-
 }
 
 void *Tree::find(size_t key) {

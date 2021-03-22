@@ -9,11 +9,11 @@
 #include <cstring>
 #include <cassert>
 #include <cmath>
-#include <memoryapi.h>
+#include "core_alloc.h"
 
 #include "tree.h"
 
-#define u8 uint8_t
+#define u8 char
 #define MIN_AREA_SIZE 204800
 
 
@@ -41,14 +41,16 @@ typedef struct header
 
 typedef struct area{
     area()= default;
-    area(area* next, size_t size, LPVOID mem, void* ptr, Tree* tree){
+    area(area* next, area* prev, size_t size, LPVOID mem, void* ptr, Tree* tree){
         this->next = next;
+        this->prev = prev;
         this->size = size;
         this->mem = mem;
         this->ptr = ptr;
         this->tree = tree;
     }
     area* next{};
+    area* prev{};
     Tree* tree;
     size_t size{};
     LPVOID mem{};

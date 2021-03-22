@@ -9,16 +9,25 @@ area_t* default_area = nullptr;
 //u8* ptr;
 
 void init_area(area_t* parent, size_t size){
-    LPVOID v = VirtualAlloc(nullptr, size, MEM_COMMIT, PAGE_READWRITE);
-    parent->next = new area_t (nullptr, size, v, v, new Tree(v, size));
+    LPVOID v = core_alloc(size);
+    parent->next = new area_t (nullptr, parent, size, v, v, new Tree(v, size));
     *((header_t *)parent->next->ptr) = header_t(parent->next, 0, parent->next->size, 0);
 }
 
 void init_area(){
-    LPVOID v = VirtualAlloc(nullptr, MIN_AREA_SIZE, MEM_COMMIT, PAGE_READWRITE);
-    default_area = new area_t (nullptr, MIN_AREA_SIZE, v, v, new Tree(v, MIN_AREA_SIZE));
+    LPVOID v = core_alloc(MIN_AREA_SIZE);
+    default_area = new area_t (nullptr, nullptr, MIN_AREA_SIZE, v, v, new Tree(v, MIN_AREA_SIZE));
     *((header_t *)default_area->ptr) = header_t(default_area, 0, default_area->size, 0);
 }
+
+header_t* get_header(void* ptr){
+    return (header_t*)ptr;
+}
+
+u8* get_addr(void* ptr){
+    return (u8*)ptr;
+}
+
 
 header_t* best(size_t size){
     if(default_area == nullptr){
@@ -32,29 +41,6 @@ header_t* best(size_t size){
             if(ptr != nullptr){
                 return (header_t *)ptr;
             }
-//            auto* best = (header_t*)((u8*)area->ptr);
-//            if(best->prev == 0){
-//                if(best->size >= size) {
-//                    return best;
-//                }else{
-//                    break;
-//                }
-//            }
-//            auto* h = (header_t *)((u8*)best - best->prev);
-//            for(;;){
-//                if(h->status == 0 && h->size >= size && h->size <= best->size){
-//                    best = h;
-//                }
-//                if(h->prev != 0){
-//                    h = (header_t *)((u8*)h - h->prev);
-//                }else{
-//                    if(best->size >= size){
-//                        return best;
-//                    }else{
-//                        break;
-//                    }
-//                }
-//            }
         }
         if(area->next == nullptr){
             break;
@@ -69,14 +55,14 @@ header_t* best(size_t size){
     }else{
         init_area(area, MIN_AREA_SIZE);
     }
-    return reinterpret_cast<header_t *>(area->next->ptr);
+    return (header_t *)(area->next->ptr);
 }
 
 header_t * create_header(u8* ptr, area_t* area, u8 status, size_t size, size_t prev, const u8* next){
     header_t header(area, status, size, prev);
     *(header_t*)ptr = header;
     ((header_t *)next)->prev = size;
-    return reinterpret_cast<header_t *>(ptr);
+    return (header_t *)(ptr);
 }
 /*
  * ptr - new header addr
@@ -88,12 +74,12 @@ header_t * create_header_ptr(u8* ptr, area_t * area, size_t size, size_t prev){
     header_t header(area, 0, size, prev);
     *(header_t*)ptr = header;
     area->ptr = ptr;
-    return reinterpret_cast<header_t *>(ptr);
+    return (header_t *)(ptr);
 }
 
 void* mem_alloc(size_t size)
 {
-    size += HEADER;
+    size += size%2 + HEADER;
     header_t* h = best(size);
     void* user_ptr = (u8*)h + HEADER;
 
@@ -115,7 +101,7 @@ void* mem_alloc(size_t size)
 
 
 void* mem_realloc(void* ptr, size_t size){
-    size += HEADER;
+    size += size%2 + HEADER;
     auto* h = (header_t *)((u8 *) ptr - HEADER);
     auto* next = (header_t *)((u8*)h + h->size);
     size_t n_size = h->size + next->size;
@@ -138,9 +124,9 @@ void* mem_realloc(void* ptr, size_t size){
         }
         next->area->tree->delete_by_ptr(next, next->size);
     }
-    size -= HEADER;
+    size -= size%2 + HEADER;
     void* new_ptr = mem_alloc(size);
-    memcpy(ptr, new_ptr, h->size-HEADER);
+    memcpy(new_ptr, ptr, h->size-HEADER);
     mem_free(ptr);
     return new_ptr;
 }
@@ -155,18 +141,18 @@ void mem_free(void* pVoid)
     header_t* next = nullptr;
     header_t* prev = nullptr;
     if(((header_t*)t)->prev != 0){
-        prev = reinterpret_cast<header_t *>((u8 *) t - header->prev);
+        prev = (header_t *)((u8 *) t - header->prev);
     }
     if(t != area->ptr){
-        next = reinterpret_cast<header_t *>((u8 *) t + header->size);
+        next = (header_t *)((u8 *) t + header->size);
     }
 
     if(next != nullptr && next->status == 0){
-        ((header_t*)t)->size += next->size;
+        header->size += next->size;
         area->tree->delete_by_ptr(next, next->size);
         if((u8*)next != area->ptr){
-            auto* h = reinterpret_cast<header_t *>((u8 *) next + next->size);
-            h->prev += ((header_t*)t)->size;
+            auto* h = (header_t *)((u8 *) next + next->size);
+            h->prev = header->size;
         }else{
             area->ptr = (u8*)t;
             next = header;
@@ -176,7 +162,7 @@ void mem_free(void* pVoid)
 
     if(prev != nullptr && prev->status == 0){
         area->tree->delete_by_ptr(prev, prev->size);
-        prev->size += ((header_t*)t)->size;
+        prev->size += header->size;
         if(next != nullptr && next != t){
             next->prev = prev->size;
         }else{
@@ -186,49 +172,35 @@ void mem_free(void* pVoid)
     }
     area->tree->add_node(header, header->size);
 
-    if(((header_t*)(area->ptr))->size == area->size){
-        if(area == default_area){
-            if(area->next == nullptr){
-                VirtualFree(area->mem, 0, MEM_RELEASE);
-                delete area;
-                default_area = nullptr;
-            }else{
-                default_area = default_area->next;
-                VirtualFree(area->mem, 0, MEM_RELEASE);
-                delete area;
-            }
-        }else {
-            area_t* a = default_area;
-            for (;;) {
-                if(a->next == nullptr){
-                    return;
-                }
-                if (a->next == area && a->next->next == nullptr){
-                    VirtualFree(area->mem, 0, MEM_RELEASE);
-                    delete a->next;
-                    a->next = nullptr;
-                    return;
-                }else{
-                    a = a->next;
-                }
-            }
+
+    if(get_header(area->ptr)->size == area->size){
+        if(area->next != nullptr){
+            area->next->prev = area->prev;
         }
+        if(area->prev != nullptr){
+            area->prev->next = area->next;
+        }else{
+            default_area = area->next;
+        }
+        core_free(area->mem);
+        delete area;
     }
 }
+
 
 void mem_show()
 {
     area_t* area = default_area;
     printf("MEMORY LOG");
     for(;area != nullptr;){
-        auto* h = reinterpret_cast<header_t *>(area->ptr);
+        auto* h = (header_t *)(area->ptr);
         printf("\n    AREA [%x] CHUNKS\n", area);
         for(;;){
-            printf("    Data + HEADER. [%x]. Memory of heap [%u]. Status: [%u]\n", h, h->size, h->status);
+            printf("    Data + HEADER. [%x]. Memory of chunk [%u]. Status: [%u]\n", h, h->size, h->status);
             if(h->prev == 0){
                 break;
             }
-            h = reinterpret_cast<header_t *>((u8 *) h - h->prev);
+            h = (header_t *)((u8 *) h - h->prev);
         }
         area = area->next;
     }
