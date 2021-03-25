@@ -15,12 +15,14 @@
 
 #define u8 char
 #define MIN_AREA_SIZE 204800
+#define AREA_STRUCT_SIZE sizeof(area_t)
 
 
 void mem_show();
 void mem_free(void* pVoid);
 void* mem_alloc(size_t size);
 void* mem_realloc(void* ptr, size_t size);
+
 
 struct area;
 
@@ -40,28 +42,36 @@ typedef struct header
 }header_t;
 
 typedef struct area{
-    area()= default;
-    area(area* next, area* prev, size_t size, LPVOID mem, void* ptr, Tree* tree){
+    area() {
+        next = nullptr;
+        prev = nullptr;
+        size = -1;
+        mem = nullptr;
+        ptr = nullptr;
+    };
+    area(area* next, area* prev, size_t size, LPVOID mem, void* ptr){
         this->next = next;
         this->prev = prev;
         this->size = size;
         this->mem = mem;
         this->ptr = ptr;
-        this->tree = tree;
     }
     area* next{};
     area* prev{};
-    Tree* tree;
     size_t size{};
     LPVOID mem{};
     void * ptr;
-    ~area(){
-        delete tree;
-    }
+
+    area* create_new_area(size_t area_size);
 }area_t;
 
 #define HEADER sizeof(header_t)
 
 extern area_t* default_area;
+extern area_t* last_area;
+extern Tree tree;
 
+header_t* get_header(void* ptr);
+header_t* next_header(header_t* h);
+header_t* prev_header(header_t* h);
 #endif //OOP1TEST_ALLOCATOR_H

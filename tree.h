@@ -31,6 +31,10 @@ public:
 
 class Tree {
 public:
+    Tree(){
+        node = nullptr;
+    };
+
     explicit Tree(void* ptr, size_t key){
         node = new Node(nullptr, nullptr, nullptr, ptr, key);
     };

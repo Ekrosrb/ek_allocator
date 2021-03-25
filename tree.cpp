@@ -45,6 +45,7 @@ void Tree::concat_node(Node* n){
                 this_n = this_n->left;
             }else{
                 this_n->left = n;
+                n->parent = this_n;
                 break;
             }
         }else{
@@ -52,6 +53,7 @@ void Tree::concat_node(Node* n){
                 this_n = this_n->right;
             }else{
                 this_n->right = n;
+                n->parent = this_n;
                 break;
             }
         }
