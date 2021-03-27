@@ -1,7 +1,3 @@
-//
-// Created by ekros on 17.03.2021.
-//
-
 #ifndef OOP1TEST_ALLOCATOR_H
 #define OOP1TEST_ALLOCATOR_H
 

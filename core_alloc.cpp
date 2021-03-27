@@ -1,8 +1,3 @@
-//
-// Created by ekros on 22.03.2021.
-//
-
-
 #include "core_alloc.h"
 
 LPVOID core_alloc(size_t size){

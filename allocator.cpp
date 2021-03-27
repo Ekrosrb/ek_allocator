@@ -1,9 +1,4 @@
-//
-// Created by ekros on 17.03.2021.
-//
-
 #include "allocator.h"
-
 
 area_t* default_area;
 area_t* last_area;
