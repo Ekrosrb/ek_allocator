@@ -13,7 +13,7 @@ private:
     size_t key;
 public:
     void* getData();
-    size_t getKey() const;
+    [[nodiscard]] size_t getKey() const;
     Node()= default;
     Node(Node* parent, Node* left, Node* right, void* ptr, size_t key){
         this->parent = parent;

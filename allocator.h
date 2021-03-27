@@ -7,22 +7,21 @@
 
 #include <cstdio>
 #include <cstring>
+#include <cstddef>
 #include <cassert>
 #include <cmath>
 #include "core_alloc.h"
-
 #include "tree.h"
 
 #define u8 char
-#define MIN_AREA_SIZE 204800
-#define AREA_STRUCT_SIZE sizeof(area_t)
-
+#define ALIGN alignof(std::max_align_t)
+#define MIN_AREA_SIZE alignment(204800)
+#define AREA_STRUCT_SIZE alignment(sizeof(area_t))
 
 void mem_show();
 void mem_free(void* pVoid);
 void* mem_alloc(size_t size);
 void* mem_realloc(void* ptr, size_t size);
-
 
 struct area;
 
@@ -65,13 +64,22 @@ typedef struct area{
     area* create_new_area(size_t area_size);
 }area_t;
 
-#define HEADER sizeof(header_t)
+#define HEADER_SIZE (sizeof(header_t) + (ALIGN  - sizeof(header_t)%ALIGN))
 
 extern area_t* default_area;
 extern area_t* last_area;
 extern Tree tree;
 
+header_t* best(size_t size);
+header_t * create_header(u8* ptr, area_t* area, u8 status, size_t size, size_t prev, u8* next);
+header_t * create_header_ptr(u8* ptr, area_t * area, size_t size, size_t prev);
+void init_area(size_t area_size);
 header_t* get_header(void* ptr);
 header_t* next_header(header_t* h);
 header_t* prev_header(header_t* h);
+size_t new_area_size(size_t size);
+size_t alignment(size_t size);
+header_t* merge_next(header_t* current, header_t* next);
+header_t* merge_prev(header_t* current, header_t* prev);
+void free_area(area_t* area);
 #endif //OOP1TEST_ALLOCATOR_H

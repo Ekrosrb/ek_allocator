@@ -1,61 +1,57 @@
 
 #include "allocator.h"
 
+
 void auto_test(){
     printf("AUTO TEST\n");
-    struct foo{
-        int a;
-        int b;
-    };
-    const int DATA_SIZE = 10;
-    foo* ptr[DATA_SIZE];
-    int size = sizeof(foo);
-    //выдиляем блоки памяти
+    const int DATA_SIZE = 25;
+    u8* ptr[DATA_SIZE];
+    int size = sizeof(u8);
+
     for(auto & i : ptr){
-        i = (foo*)mem_alloc(size);
-        i->a = size;
-        i->b = size;
+        i = (u8*)mem_alloc(size);
+        //заполняем память данными
+        for(int a = 0; a < size; a++){
+            *(i+a) = 1;
+        }
         size*=2;
     }
-    printf("MEM_ALLOC  ");
     mem_show();
 
-    printf("Foo data before realloc:\n a [");
-    for(auto & i: ptr){
-        printf("%u ", i->a);
+    size = sizeof(u8)*2;
+    for(int i = 0; i < DATA_SIZE; i++){
+        size *= 2;
+        if(i%2 == 0) {
+            ptr[i] = (u8 *) mem_realloc(ptr[i], size);
+        }else{
+            mem_free(ptr[i]);
+        }
     }
-    printf("]\n b [");
-    for(auto & i: ptr){
-        printf("%u ", i->b);
-    }
-    printf("]\n\n");
-
-    /* Увеличение блока выделенной памяти в 4 раза.
-     * Для трех последних блоков - памяти в арене недостаточно, по этому создаються новые арены.*/
-    size = sizeof(foo);
-    for(auto & i : ptr){
-        size *= 4;
-        i = (foo*)mem_realloc(i, size);
-    }
-
-    printf("Foo data after realloc:\n a [");
-    for(auto & i: ptr){
-        printf("%u ", i->a);
-    }
-    printf("]\n b [");
-    for(auto & i: ptr){
-        printf("%u ", i->b);
-    }
-    printf("]\n\n\n");
-    printf("MEM_REALLOC  ");
     mem_show();
-
-
+    size = sizeof(u8)*2;
+    for(int i = 0; i < DATA_SIZE; i++){
+        size *= 2;
+        if(i%2 == 0){
+            mem_free(ptr[i]);
+        }else{
+            ptr[i] = (u8*)mem_alloc(size);
+        }
+    }
+    mem_show();
+    size = sizeof(u8)*2;
+    for(int i = 0; i < DATA_SIZE; i++){
+        size *= 2;
+        if(i%2 == 0){
+            ptr[i] = (u8*)mem_alloc(size);
+        }
+    }
+    mem_show();
     //освобождение памяти
     for(auto & i : ptr){
         mem_free(i);
     }
-    printf("MEM_FREE  ");
+
+    printf("MEM AFTER FREE\n\n");
     //пустой вывод mem_show() - вся память в аренах освобождена, по этому она возвращаеться ядру.
     mem_show();
 }
@@ -92,5 +88,6 @@ void test()
 
 int main() {
     test();
+
     return 0;
 }
