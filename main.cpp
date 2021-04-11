@@ -1,4 +1,4 @@
-
+#include "stdio.h"
 #include "allocator.h"
 
 
@@ -86,8 +86,17 @@ void test()
     mem_show();
 }
 
-int main() {
-    test();
+using namespace std;
 
+int main()
+{
+    void* t = mem_alloc(5);
+    void* a = mem_alloc(50);
+    void* b = mem_alloc(500);
+    void* c = mem_alloc(MIN_AREA_SIZE + 10);
+    void* d = mem_alloc(SIZE_MAX);
+    void* e = mem_alloc(ALLOC_MAX_SIZE);
     return 0;
 }
+
+// This code is contributed by rathbhupendra
