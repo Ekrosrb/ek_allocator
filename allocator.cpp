@@ -18,6 +18,7 @@ void* mem_alloc(size_t size){
     size = ALIGN(size+HEADER_SIZE);
 
     header_t* h = best(size);
+    if(!h) return nullptr;
 
     size_t last = h->size - size;
 
@@ -45,8 +46,7 @@ header_t* best(size_t size){
     if(!root || !node || !node->ptr){
         size_t s = new_area_size(size);
         void* mem = core_alloc(s);
-        h = create_header(nullptr, s, mem);
-        return h;
+        return !mem ? nullptr : create_header(nullptr, s, mem);
     }
     void* ptr = node->ptr;
     root = (root == node) ? nullptr : root;
@@ -105,5 +105,20 @@ void* user_ptr(header_t* h){
 }
 
 header_t* merge(header_t* first, header_t* second){
-    return nullptr;
+    header_t *next, *prev;
+    if(next_h(first) == second){
+        prev = first;
+        next = second;
+    }else{
+        prev = second;
+        next = first;
+    }
+    prev->size += next->size;
+
+    if(!next->is_last){
+        next_h(next)->prev = prev->size;
+    }else{
+        prev->is_last = 1;
+    }
+    return prev;
 }
