@@ -98,5 +98,3 @@ int main()
     void* e = mem_alloc(ALLOC_MAX_SIZE);
     return 0;
 }
-
-// This code is contributed by rathbhupendra
