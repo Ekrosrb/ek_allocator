@@ -80,9 +80,14 @@ Node* insert(Node* root, size_t key, void* ptr, Node* node)
         root->left = insert(root->left, key, ptr, node);
     else if (key > root->key)
         root->right = insert(root->right, key, ptr, node);
-    else // Equal keys not allowed 
+    else { // Equal keys not allowed
+        Node *n = root;
+        while (n->next != nullptr) {
+            n = n->next;
+        }
+        n->next = newNode(key, ptr, node);
         return root;
-
+    }
     /* 2. Update height of this ancestor root */
     root->height = 1 + max(height(root->left),
                            height(root->right));
@@ -139,45 +144,33 @@ Node* deleteNode(Node* root, size_t key)
     if (root == nullptr)
         return root;
 
-    // If the key to be deleted is smaller 
-    // than the root's key, then it lies
-    // in left subtree 
     if ( key < root->key )
         root->left = deleteNode(root->left, key);
-
-        // If the key to be deleted is greater
-        // than the root's key, then it lies
-        // in right subtree
     else if( key > root->key )
         root->right = deleteNode(root->right, key);
-
-        // if key is same as root's key, then
-        // This is the node to be deleted
-    else
-    {
+    else {
+        if(root->next != nullptr){
+            Node* n = root->next;
+            root->next = n->next;
+            return n;
+        }
         // node with only one child or no child 
-        if( (root->left == nullptr) ||
-            (root->right == nullptr) )
-        {
-            Node *temp = root->left ?
-                         root->left :
-                         root->right;
+        if( (root->left == nullptr) || (root->right == nullptr) ){
+            Node *temp = root->left ? root->left : root->right;
 
             // No child case
-            if (temp == nullptr)
-            {
+            if (temp == nullptr) {
                 temp = root;
                 root = nullptr;
-            }
-            else // One child case 
+            } else {// One child case
                 *root = *temp; // Copy the contents of
-            // the non-empty child
-
+                // the non-empty child
+            }
             temp->ptr = nullptr;
+            temp->right = nullptr;
+            temp->left = nullptr;
 //            delete temp;
-        }
-        else
-        {
+        } else {
             // node with two children: Get the inorder 
             // successor (smallest in the right subtree) 
             Node* temp = minValueNode(root->right);
@@ -185,6 +178,7 @@ Node* deleteNode(Node* root, size_t key)
             // Copy the inorder successor's 
             // data to this node 
             root->key = temp->key;
+            root->ptr = temp->ptr;
 
             // Delete the inorder successor 
             root->right = deleteNode(root->right,
@@ -254,7 +248,7 @@ void preOrder(Node *root)
 
 Node* search(Node* root, size_t key)
 {
-    if (root == nullptr || root->ptr == nullptr || root->key == key) {
+    if (root == nullptr || root->ptr == nullptr) {
         return root;
     }
 
@@ -263,9 +257,17 @@ Node* search(Node* root, size_t key)
 
     if (root->key < key) {
         node = search(root->right, key);
-    }else {
+    }else if(root->key > key){
         buff = root;
         node = search(root->left, key);
+    }else{
+        if(root->next != nullptr){
+            Node* n = root->next;
+            root->next = n->next;
+            return n;
+        }else{
+            return root;
+        }
     }
 
     return (!node && buff) ? buff : node;

@@ -90,11 +90,28 @@ using namespace std;
 
 int main()
 {
-    void* t = mem_alloc(5);
-    void* a = mem_alloc(50);
-    void* b = mem_alloc(500);
-    void* c = mem_alloc(MIN_AREA_SIZE + 10);
-    void* d = mem_alloc(SIZE_MAX);
-    void* e = mem_alloc(ALLOC_MAX_SIZE);
+
+//    void *a = mem_alloc(5);
+//    void *b = mem_alloc(5);
+//    void *c = mem_alloc(5);
+//    void *d = mem_alloc(5);
+//    mem_free(a);
+//    mem_free(c);
+//    mem_free(b);
+//
+//    mem_free(d);
+    int size = 14;
+    void* ptr[size];
+    for(int i = 0; i < size; i++){
+        ptr[i] = mem_alloc((i+1)*10000);
+        printf("%d\n", i);
+    }
+
+    for(int i = 0; i < size; i++){
+        mem_free(ptr[i]);
+//        preOrder(root);
+        printf("%d\n", i);
+    }
+
     return 0;
 }

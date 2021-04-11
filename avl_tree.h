@@ -2,10 +2,11 @@
 #include <cstdlib>
 class Node {
 public:
-    void* ptr;
+    void* ptr = nullptr;
     size_t key;
-    Node *left;
-    Node *right;
+    Node *left = nullptr;
+    Node *right = nullptr;
+    Node *next = nullptr;
     size_t height;
 };
 
