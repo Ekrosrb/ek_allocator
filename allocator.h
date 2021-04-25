@@ -7,7 +7,7 @@
 #include <cassert>
 #include <cmath>
 #include "core_alloc.h"
-#include "avl_tree.h"
+#include "tree.h"
 #include "config.h"
 
 void mem_show();
@@ -39,10 +39,9 @@ header_t* create_header(header_t* prev, size_t size, void* mem);
 header_t* best(size_t size);
 void* user_ptr(header_t* h);
 header_t* merge(header_t* first, header_t* second);
-void split(header_t* h, size_t size);
+void split(header_t* h, size_t size, u8 is_try_merge_last);
 header_t* next_h(header_t* h);
 header_t* prev_h(header_t* h);
 header_t* get_h(void* h);
-void clear_node(Node* h);
 size_t new_area_size(size_t size);
 #endif //OOP1TEST_ALLOCATOR_H+-

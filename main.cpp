@@ -1,9 +1,9 @@
-#include "stdio.h"
+#include <ctime>
+#include <cstdio>
 #include "allocator.h"
+#include <random>
 
-
-void auto_test(){
-    printf("AUTO TEST\n");
+void own_test(){
     const int DATA_SIZE = 25;
     u8* ptr[DATA_SIZE];
     int size = sizeof(u8);
@@ -27,7 +27,6 @@ void auto_test(){
             mem_free(ptr[i]);
         }
     }
-    mem_show();
     size = sizeof(u8)*2;
     for(int i = 0; i < DATA_SIZE; i++){
         size *= 2;
@@ -45,7 +44,6 @@ void auto_test(){
             ptr[i] = (u8*)mem_alloc(size);
         }
     }
-    mem_show();
     //освобождение памяти
     for(auto & i : ptr){
         mem_free(i);
@@ -58,60 +56,98 @@ void auto_test(){
 
 void test()
 {
-    printf("\nstatus [0] - free, [1] - occupied\n\n");
-    auto_test();
-
-    printf("\n\nMANUAL TESTING\n");
-    struct foo{
-        int a;
-        int b;
-    };
-    foo* f = static_cast<struct foo *>(mem_alloc(20000));
-    mem_show();
-    void* k = mem_alloc(50);
-    mem_show();
-    f->a = 10;
-    f->b = 15;
-    f = static_cast<struct foo *>(mem_realloc(f, 25000));
-    mem_show();
-    mem_free(k);
-    mem_show();
-    foo* f2 = static_cast<struct foo *>(mem_alloc(MIN_AREA_SIZE*4-200));
-    f2->a = 50;
-    f2->b = 155;
-    mem_show();
-    mem_free(f);
-    mem_show();
-    mem_free(f2);
-    mem_show();
+    printf("OWN TEST (WITH MEM_SHOW)");
+    printf("\nstatus [0] - free, [1] - occupied\n");
+    printf("Testing...\n");
+    own_test();
+    printf("Test successfully completed!\n");
 }
 
 using namespace std;
 
+
+struct Result {
+    void *ptr;
+    size_t size;
+    unsigned int checksum;
+    bool isFree = true;
+};
+
+
+void buf_fill(void* ptr, size_t size){
+    for(int i = 0; i < size; i++){
+        *((u8*)ptr+i) = rand() % 10 + 1;
+    }
+}
+
+int buf_checksum(void* ptr, size_t size){
+    int sum = 0;
+    for(int i = 0; i < size; i++){
+        sum += *((u8*)ptr+i);
+    }
+    return sum;
+}
+
+int tester(int range){
+    cout << "Testing..." << endl;
+    const int N = 1000;
+    size_t size = 0;
+    std::default_random_engine generator;
+    std::uniform_int_distribution<int> distribution(1,range);
+    Result result[N] = {};
+    for (int i = 0; i < N; ++i) {
+        int j = rand() % N;
+        if (result[j].isFree) {
+            size = distribution(generator);
+            result[j].ptr = mem_alloc(size);
+            if (result[j].ptr != nullptr) {
+                buf_fill(result[j].ptr, size);
+                result[j].size = size;
+                result[j].checksum = buf_checksum(result[j].ptr, size);
+                result[j].isFree = false;
+            }
+        } else {
+            if (result[j].checksum != buf_checksum(result[j].ptr, result[j].size)) {
+                cout << "Checksum failed!\n";
+                return -1;
+            }
+            if (rand() & 1) {
+                size = distribution(generator);
+                result[j].ptr = mem_realloc(result[j].ptr, size);
+                if (result[j].ptr != nullptr) {
+                    buf_fill(result[j].ptr, size);
+                    result[j].size = size;
+                    result[j].checksum = buf_checksum(result[j].ptr, size);
+                }
+            } else {
+                mem_free(result[j].ptr);
+                result[j].isFree = true;
+            }
+        }
+    }
+    for (auto &r: result) {
+        if (!r.isFree) {
+            if (r.checksum != buf_checksum(r.ptr, r.size)) {
+                cout << "Checksum failed!\n";
+                return -1;
+            }
+            mem_free(r.ptr);
+        }
+
+    }
+    cout << "Auto test successfully completed!" << endl;
+    return 0;
+}
+
 int main()
 {
 
-//    void *a = mem_alloc(5);
-//    void *b = mem_alloc(5);
-//    void *c = mem_alloc(5);
-//    void *d = mem_alloc(5);
-//    mem_free(a);
-//    mem_free(c);
-//    mem_free(b);
-//
-//    mem_free(d);
-    int size = 14;
-    void* ptr[size];
-    for(int i = 0; i < size; i++){
-        ptr[i] = mem_alloc((i+1)*10000);
-        printf("%d\n", i);
-    }
+    cout << "With small data size:\n" << endl;
+    tester(1000); // auto test with small data size
+    cout << "\nWith big data size:\n" << endl;
+    tester(1000000); // auto test with big data size
 
-    for(int i = 0; i < size; i++){
-        mem_free(ptr[i]);
-//        preOrder(root);
-        printf("%d\n", i);
-    }
+    test(); //own test
 
     return 0;
 }

@@ -1,10 +1,10 @@
 #include "allocator.h"
 
-//void* default_area = nullptr;
-//size_t default_area_size = 0;
 Node* root = nullptr;
 void mem_show(){
-
+    std::cout << "--------------------------------- TREE ---------------------------------" << std::endl;
+    print(root, 0);
+    std::cout << "--------------------------------- END  ---------------------------------" << std::endl;
 }
 
 void mem_free(void* pVoid){
@@ -18,12 +18,12 @@ void mem_free(void* pVoid){
     header_t* prev = !h->is_first ? prev_h(h) : nullptr;
 
     if(next && !next->status){
-        root = deleteNode(root, next->size);
+        root = deleteNode(root, next->size, next);
         h = merge(h, next);
     }
 
     if(prev && !prev->status){
-        root = deleteNode(root, prev->size);
+        root = deleteNode(root, prev->size, prev);
         h = merge(prev, h);
     }
 
@@ -41,7 +41,7 @@ void* mem_alloc(size_t size){
     size = ALIGN(size+HEADER_SIZE);
     header_t* h = best(size);
     if(!h) return nullptr;
-    split(h, size);
+    split(h, size, 1);
     h->status = 1;
     return user_ptr(h);
 }
@@ -62,25 +62,25 @@ void* mem_realloc(void* ptr, size_t size){
     }
 
     if(size < h->size){
-        split(h, size);
+        split(h, size, 1);
         return ptr;
     }
 
     if(size > h->size && !h->is_last){
         header_t* next = next_h(h);
         if(!next->status && h->size + next->size >= size){
-            root = deleteNode(root, next->size);
-            split(merge(h, next), size);
+            root = deleteNode(root, next->size, next);
+            split(merge(h, next), size, 1);
             return ptr;
         }
     }
 
-    void* realloc = mem_alloc(size);
-    if (realloc) {
-        memcpy(realloc, ptr, h->size);
+    void* realloc_ptr = mem_alloc(size);
+    if (realloc_ptr) {
+        memcpy(realloc_ptr, ptr, h->size-HEADER_SIZE);
         mem_free(ptr);
     }
-    return realloc;
+    return realloc_ptr;
 }
 
 header_t* best(size_t size){
@@ -89,13 +89,13 @@ header_t* best(size_t size){
         node = search(root, size);
     }
 
-    if(!root || !node || !node->ptr){
+    if(!root || !node){
         size_t s = new_area_size(size);
         void* mem = core_alloc(s);
         return !mem ? nullptr : create_header(nullptr, s, mem);
     }
     void* ptr = node->ptr;
-    root = deleteNode(root, node->key);
+    root = deleteNode(root, node->key, node);
     return (header_t*)ptr;
 }
 //prev
@@ -159,11 +159,18 @@ header_t* merge(header_t* prev, header_t* next){
     return prev;
 }
 
-void split(header_t* h, size_t size){
+void split(header_t* h, size_t size, u8 is_try_merge_last){
     size_t last = ALIGN(h->size - size);
 
     if(last > HEADER_SIZE + MIN_ALLOCATED_SIZE){
         header_t* last_h = create_header(h, last, nullptr);
+        if(is_try_merge_last && !last_h->is_last){
+            header_t* next = next_h(last_h);
+            if(!next->status){
+                root = deleteNode(root, next->size, next);
+                merge(last_h, next);
+            }
+        }
         root = insert(root, last_h->size, last_h, &last_h->node);
     }
 }
@@ -171,7 +178,3 @@ void split(header_t* h, size_t size){
 header_t* get_h(void* h){
     return (header_t*)h;
 };
-
-void clear_node(Node* h){
-
-}
